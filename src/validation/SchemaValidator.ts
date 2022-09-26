@@ -76,11 +76,12 @@ export class SchemaValidator implements Validator<Schema> {
   async validateObject(
     input: Schema,
     context: ValidationContext
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (defined(this._genericValidator)) {
       this._genericValidator!.validateObject(input, context);
     }
-    SchemaValidator.validateSchema("", input, context);
+    const result = SchemaValidator.validateSchema("", input, context);
+    return result;
   }
 
   /**

@@ -109,24 +109,25 @@ export class I3dmValidator implements Validator<Buffer> {
   async validateObject(
     input: Buffer,
     context: ValidationContext
-  ): Promise<void> {
+  ): Promise<boolean> {
     // Create a new context to collect the issues that are
     // found in the data. If there are issues, then they
     // will be stored as the 'internal issues' of a
     // single content validation issue.
     const derivedContext = context.derive(".");
-    await this.validateObjectInternal(input, derivedContext);
+    const result = await this.validateObjectInternal(input, derivedContext);
     const derivedResult = derivedContext.getResult();
     const issue = ContentValidationIssues.createFrom(this._uri, derivedResult);
     if (issue) {
       context.addIssue(issue);
     }
+    return result;
   }
 
   async validateObjectInternal(
     input: Buffer,
     context: ValidationContext
-  ): Promise<void> {
+  ): Promise<boolean> {
     const headerByteLength = 32;
     if (input.length < headerByteLength) {
       const message =
@@ -134,7 +135,7 @@ export class I3dmValidator implements Validator<Buffer> {
         `but only has ${input.length} bytes`;
       const issue = BinaryValidationIssues.BINARY_INVALID(this._uri, message);
       context.addIssue(issue);
-      return;
+      return false;
     }
 
     const magic = input.toString("utf8", 0, 4);
@@ -154,7 +155,7 @@ export class I3dmValidator implements Validator<Buffer> {
         magic
       );
       context.addIssue(issue);
-      return;
+      return false;
     }
 
     if (version !== 1) {
@@ -165,7 +166,7 @@ export class I3dmValidator implements Validator<Buffer> {
         version
       );
       context.addIssue(issue);
-      return;
+      return false;
     }
 
     if (byteLength !== input.length) {
@@ -176,7 +177,7 @@ export class I3dmValidator implements Validator<Buffer> {
         input.length
       );
       context.addIssue(issue);
-      return;
+      return false;
     }
 
     if (gltfFormat > 1) {
@@ -187,6 +188,7 @@ export class I3dmValidator implements Validator<Buffer> {
         gltfFormat
       );
       context.addIssue(issue);
+      return false;
     }
 
     const featureTableJsonByteOffset = headerByteLength;
@@ -207,7 +209,7 @@ export class I3dmValidator implements Validator<Buffer> {
         8
       );
       context.addIssue(issue);
-      return;
+      return false;
     }
 
     if (batchTableBinaryByteOffset % 8 > 0) {
@@ -217,7 +219,7 @@ export class I3dmValidator implements Validator<Buffer> {
         8
       );
       context.addIssue(issue);
-      return;
+      return false;
     }
 
     const embeddedGlb = gltfFormat === 1;
@@ -228,7 +230,7 @@ export class I3dmValidator implements Validator<Buffer> {
         8
       );
       context.addIssue(issue);
-      return;
+      return false;
     }
 
     const computedByteLength =
@@ -246,7 +248,7 @@ export class I3dmValidator implements Validator<Buffer> {
         computedByteLength
       );
       context.addIssue(issue);
-      return;
+      return false;
     }
 
     const featureTableJsonBuffer = input.slice(
@@ -280,7 +282,7 @@ export class I3dmValidator implements Validator<Buffer> {
       const message = `Could not parse feature table JSON: ${error}`;
       const issue = IoValidationIssues.JSON_PARSE_ERROR(this._uri, message);
       context.addIssue(issue);
-      return;
+      return false;
     }
 
     try {
@@ -289,6 +291,7 @@ export class I3dmValidator implements Validator<Buffer> {
       const message = `Could not parse batch table JSON: ${error}`;
       const issue = IoValidationIssues.JSON_PARSE_ERROR(this._uri, message);
       context.addIssue(issue);
+      return false;
     }
 
     const featuresLength = featureTableJson!.INSTANCES_LENGTH;
@@ -296,6 +299,7 @@ export class I3dmValidator implements Validator<Buffer> {
       const message = `Feature table must contain a INSTANCES_LENGTH property.`;
       const issue = IoValidationIssues.JSON_PARSE_ERROR(this._uri, message);
       context.addIssue(issue);
+      return false;
     }
 
     if (
@@ -306,6 +310,7 @@ export class I3dmValidator implements Validator<Buffer> {
         "Feature table must contain either the POSITION or POSITION_QUANTIZED property.";
       const issue = IoValidationIssues.JSON_PARSE_ERROR(this._uri, message);
       context.addIssue(issue);
+      return false;
     }
 
     if (
@@ -316,6 +321,7 @@ export class I3dmValidator implements Validator<Buffer> {
         "Feature table property NORMAL_RIGHT is required when NORMAL_UP is present.";
       const issue = IoValidationIssues.JSON_PARSE_ERROR(this._uri, message);
       context.addIssue(issue);
+      return false;
     }
 
     if (
@@ -326,6 +332,7 @@ export class I3dmValidator implements Validator<Buffer> {
         "Feature table property NORMAL_UP is required when NORMAL_RIGHT is present.";
       const issue = IoValidationIssues.JSON_PARSE_ERROR(this._uri, message);
       context.addIssue(issue);
+      return false;
     }
 
     if (
@@ -336,6 +343,7 @@ export class I3dmValidator implements Validator<Buffer> {
         "Feature table property NORMAL_RIGHT_OCT32P is required when NORMAL_UP_OCT32P is present.";
       const issue = IoValidationIssues.JSON_PARSE_ERROR(this._uri, message);
       context.addIssue(issue);
+      return false;
     }
 
     if (
@@ -346,6 +354,7 @@ export class I3dmValidator implements Validator<Buffer> {
         "Feature table property NORMAL_UP_OCT32P is required when NORMAL_RIGHT_OCT32P is present.";
       const issue = IoValidationIssues.JSON_PARSE_ERROR(this._uri, message);
       context.addIssue(issue);
+      return false;
     }
 
     if (
@@ -357,6 +366,7 @@ export class I3dmValidator implements Validator<Buffer> {
         "Feature table properties QUANTIZED_VOLUME_OFFSET and QUANTIZED_VOLUME_SCALE are required when POSITION_QUANTIZED is present.";
       const issue = IoValidationIssues.JSON_PARSE_ERROR(this._uri, message);
       context.addIssue(issue);
+      return false;
     }
 
     const featureTableMessage = validateFeatureTable(
@@ -371,6 +381,7 @@ export class I3dmValidator implements Validator<Buffer> {
         featureTableMessage!
       );
       context.addIssue(issue);
+      return false;
     }
 
     const batchTableMessage = validateBatchTable(
@@ -384,9 +395,11 @@ export class I3dmValidator implements Validator<Buffer> {
         batchTableMessage!
       );
       context.addIssue(issue);
+      return false;
     }
 
     const gltfValidator = new GltfValidator(this._uri);
-    await gltfValidator.validateObject(glb, context);
+    const result = gltfValidator.validateObject(glb, context);
+    return result;
   }
 }

@@ -8,6 +8,7 @@ import { BoundingVolume } from "../structure/BoundingVolume";
 
 import { JsonValidationIssues } from "../issues/JsonValidationIssues";
 import { SemanticValidationIssues } from "../issues/SemanticValidationIssues";
+import { ExtensionsValidator } from "./ExtensionsValidator";
 
 /**
  * A class for validations related to `boundingVolume` objects.
@@ -54,6 +55,19 @@ export class BoundingVolumeValidator {
       )
     ) {
       result = false;
+    } else {
+      const extensionsValidationResult = ExtensionsValidator.validateExtensions(
+        boundingVolumePath,
+        "boundingVolume",
+        boundingVolume,
+        context
+      );
+      if (!extensionsValidationResult.allValid) {
+        result = false;
+      }
+      if (!extensionsValidationResult.performDefaultValidation) {
+        return result;
+      }
     }
 
     const box = boundingVolume.box;

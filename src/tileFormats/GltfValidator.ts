@@ -52,7 +52,8 @@ export class GltfValidator implements Validator<Buffer> {
   async validateObject(
     input: Buffer,
     context: ValidationContext
-  ): Promise<void> {
+  ): Promise<boolean> {
+    let valid = true;
     const resourceResolver = context.getResourceResolver();
     const gltfResourceResolver = resourceResolver.derive(this._baseDirectory);
     const uri = this._uri;
@@ -76,6 +77,7 @@ export class GltfValidator implements Validator<Buffer> {
         issue.addInternalIssue(internalIssue);
       }
       context.addIssue(issue);
+      valid = false;
     }
     if (result.issues.numWarnings > 0) {
       const path = uri;
@@ -93,5 +95,6 @@ export class GltfValidator implements Validator<Buffer> {
       }
       context.addIssue(issue);
     }
+    return valid;
   }
 }

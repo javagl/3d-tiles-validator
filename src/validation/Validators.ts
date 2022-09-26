@@ -15,6 +15,8 @@ import { JsonSchemaValidators } from "../json/JsonSchemaValidators";
 import { IoValidationIssues } from "../issues/IoValidationIssue";
 
 import { TileImplicitTiling } from "../structure/TileImplicitTiling";
+import { ExtensionsValidator, ExtensionValidator } from "./ExtensionsValidator";
+import { Validator } from "./Validator";
 
 /**
  * Utility methods related to `Validator` instances.
@@ -28,6 +30,19 @@ export class Validators {
   // for the generic, AJV-based JSON schema validation
   static setSchemaRootDir(schemaRootDir: string) {
     Validators._schemaRootDir = schemaRootDir;
+  }
+
+  // TODO Experimental for extension validation
+  static registerExtensionValidator(
+    extensionName: string,
+    extensionValidator: ExtensionValidator<any>,
+    performDefaultValidation: boolean
+  ) {
+    ExtensionsValidator.register(
+      extensionName,
+      extensionValidator,
+      performDefaultValidation
+    );
   }
 
   /**

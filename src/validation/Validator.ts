@@ -13,5 +13,5 @@ export interface Validator<T> {
    * @param context The `ValidationContext`
    * @returns A promise that is fulfilled when the validation is finished
    */
-  validateObject(input: T, context: ValidationContext): Promise<void>;
+  validateObject(input: T, context: ValidationContext): Promise<boolean>;
 }

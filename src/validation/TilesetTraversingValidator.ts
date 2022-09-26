@@ -33,7 +33,8 @@ export class TilesetTraversingValidator {
     tileset: Tileset,
     validationState: ValidationState,
     context: ValidationContext
-  ): Promise<void> {
+  ): Promise<boolean> {
+    let result = true;
     const depthFirst = true;
     const resourceResolver = context.getResourceResolver();
     try {
@@ -49,6 +50,9 @@ export class TilesetTraversingValidator {
               traversedTile,
               context
             );
+          if (!isValid) {
+            result = false;
+          }
           return Promise.resolve(isValid);
         },
         depthFirst
@@ -67,15 +71,19 @@ export class TilesetTraversingValidator {
           message
         );
         context.addIssue(issue);
-        return;
+        result = false;
+        return result;
       }
       // Other kinds of errors should not bubble up to the caller,
       // and are therefore collected here as `INTERNAL_ERROR`
       const message = `Internal error while traversing tileset: ${error}`;
       const issue = ValidationIssues.INTERNAL_ERROR("", message);
       context.addIssue(issue);
-      return;
+      result = false;
+      return result;
     }
+
+    return result;
   }
 
   /**

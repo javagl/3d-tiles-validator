@@ -84,11 +84,12 @@ export class TilesetValidator implements Validator<Tileset> {
   async validateObject(
     input: Tileset,
     context: ValidationContext
-  ): Promise<void> {
+  ): Promise<boolean> {
     if (defined(this._genericValidator)) {
       this._genericValidator!.validateObject(input, context);
     }
-    await TilesetValidator.validateTileset(input, context);
+    const result = await TilesetValidator.validateTileset(input, context);
+    return result;
   }
 
   /**
@@ -105,30 +106,38 @@ export class TilesetValidator implements Validator<Tileset> {
   static async validateTileset(
     tileset: Tileset,
     context: ValidationContext
-  ): Promise<void> {
+  ): Promise<boolean> {
     const path = "";
 
     // Make sure that the given value is an object
     if (!BasicValidator.validateObject(path, "tileset", tileset, context)) {
-      return;
+      return false;
     }
 
+    let result = true;
+
     // Validate the object as a RootProperty
-    RootPropertyValidator.validateRootProperty(
+    if (!RootPropertyValidator.validateRootProperty(
       path,
       "tileset",
       tileset,
       context
-    );
+    )) {
+      result = false;
+    }
 
     // The asset MUST be defined
     const asset = tileset.asset;
-    AssetValidator.validateAsset(asset, context);
+    if (!AssetValidator.validateAsset(asset, context)) {
+      result = false;
+    }
 
     // Validate the properties (I mean, the `properties`...)
     const properties = tileset.properties;
     if (defined(properties)) {
-      PropertiesValidator.validateProperties(properties!, context);
+      if (!PropertiesValidator.validateProperties(properties!, context)) {
+        result = false;
+      }
     }
 
     // The schema and schemaUri MUST NOT be present at the same time
@@ -140,6 +149,7 @@ export class TilesetValidator implements Validator<Tileset> {
         "schemaUri"
       );
       context.addIssue(issue);
+      result = false;
     }
 
     // Validate the schemaUri
@@ -147,12 +157,14 @@ export class TilesetValidator implements Validator<Tileset> {
     const schemaUriPath = path + "/schemaUri";
     if (defined(schemaUri)) {
       // The schemaUri MUST be a string
-      BasicValidator.validateString(
+      if (!BasicValidator.validateString(
         schemaUriPath,
         "schemaUri",
         schemaUri,
         context
-      );
+      )) {
+        result = false;
+      }
     }
 
     // Create the ValidationState, and fill it with information
@@ -176,6 +188,8 @@ export class TilesetValidator implements Validator<Tileset> {
     if (defined(schema)) {
       if (SchemaValidator.validateSchema(schemaPath, schema!, context)) {
         validationState.validatedSchema = schema;
+      } else {
+        result = false;
       }
     }
 
@@ -196,12 +210,14 @@ export class TilesetValidator implements Validator<Tileset> {
         context.addIssue(issue);
       } else if (defined(validationState.validatedSchema)) {
         if (
-          TilesetValidator.validateTilesetGroups(
+          !TilesetValidator.validateTilesetGroups(
             groups!,
             validationState.validatedSchema!,
             context
           )
         ) {
+          result = false;
+        } else {
           validationState.validatedGroups = groups;
         }
       }
@@ -211,12 +227,14 @@ export class TilesetValidator implements Validator<Tileset> {
     const statistics = tileset.statistics;
     const statisticsPath = path + "/statistics";
     if (defined(statistics)) {
-      StatisticsValidator.validateStatistics(
+      if (!StatisticsValidator.validateStatistics(
         statisticsPath,
         statistics!,
         validationState,
         context
-      );
+      )) {
+        result = false;
+      }
     }
 
     // Validate the geometricError
@@ -226,7 +244,7 @@ export class TilesetValidator implements Validator<Tileset> {
     // The geometricError MUST be defined
     // The geometricError MUST be a number
     // The geometricError MUST be >= 0
-    BasicValidator.validateNumberRange(
+    if (!BasicValidator.validateNumberRange(
       geometricErrorPath,
       "geometricError",
       geometricError,
@@ -235,7 +253,9 @@ export class TilesetValidator implements Validator<Tileset> {
       undefined,
       false,
       context
-    );
+    )) {
+      result = false;
+    }
 
     // Validate the metadata
     const metadata = tileset.metadata;
@@ -252,23 +272,32 @@ export class TilesetValidator implements Validator<Tileset> {
         );
         context.addIssue(issue);
       } else if (defined(validationState.validatedSchema)) {
-        MetadataEntityValidator.validateMetadataEntity(
+        if (!MetadataEntityValidator.validateMetadataEntity(
           metadataPath,
           "metadata",
           metadata!,
           validationState.validatedSchema!,
           context
-        );
+        )) {
+          result = false;
+        }
       }
     }
 
-    await TilesetTraversingValidator.validateTileset(
+    const traversalValid = await TilesetTraversingValidator.validateTileset(
       tileset,
       validationState,
       context
     );
+    if (!traversalValid) {
+      result = false;
+    }
 
-    TilesetValidator.validateExtensionDeclarations(path, tileset, context);
+    if (!TilesetValidator.validateExtensionDeclarations(path, tileset, context)) {
+      result = false;
+    }
+
+    return result;
   }
 
   /**
@@ -287,12 +316,16 @@ export class TilesetValidator implements Validator<Tileset> {
    * @param path The path for `ValidationIssue` instances
    * @param tileset The `Tileset`
    * @param context The `ValidationContext`
+   * @returns Whether the extension declarations are valid
    */
   private static validateExtensionDeclarations(
     path: string,
     tileset: Tileset,
     context: ValidationContext
-  ): void {
+  ): boolean {
+
+    let result = true;
+
     // These are the actual sets of unique string values that
     // are found in 'extensionsUsed' and 'extensionsRequired'
     const actualExtensionsUsed = new Set<string>();
@@ -305,7 +338,7 @@ export class TilesetValidator implements Validator<Tileset> {
       // The extensionsUsed MUST be an array of strings with
       // a length of at least 1
       if (
-        BasicValidator.validateArray(
+        !BasicValidator.validateArray(
           extensionsUsedPath,
           "extensionsUsed",
           extensionsUsed,
@@ -315,15 +348,19 @@ export class TilesetValidator implements Validator<Tileset> {
           context
         )
       ) {
+        result = false;
+      } else {
         extensionsUsed!.forEach((e) => actualExtensionsUsed.add(e));
 
         // The elements in extensionsUsed MUST be unique
-        BasicValidator.validateArrayElementsUnique(
+        if (!BasicValidator.validateArrayElementsUnique(
           extensionsUsedPath,
           "extensionsUsed",
           extensionsUsed,
           context
-        );
+        )) {
+          result = false;
+        }
       }
     }
     // Validate the extensionsRequired
@@ -333,7 +370,7 @@ export class TilesetValidator implements Validator<Tileset> {
       // The extensionsRequired MUST be an array of strings with
       // a length of at least 1
       if (
-        BasicValidator.validateArray(
+        !BasicValidator.validateArray(
           extensionsRequiredPath,
           "extensionsRequired",
           extensionsRequired,
@@ -343,6 +380,8 @@ export class TilesetValidator implements Validator<Tileset> {
           context
         )
       ) {
+        result = false;
+      } else {
         extensionsRequired!.forEach((e) => actualExtensionsRequired.add(e));
 
         // The elements in extensionsRequired MUST be unique
@@ -364,6 +403,7 @@ export class TilesetValidator implements Validator<Tileset> {
           extensionName
         );
         context.addIssue(issue);
+        result = false;
       }
     }
 
@@ -378,6 +418,7 @@ export class TilesetValidator implements Validator<Tileset> {
           extensionName
         );
         context.addIssue(issue);
+        result = false;
       }
     }
 
@@ -393,6 +434,8 @@ export class TilesetValidator implements Validator<Tileset> {
         context.addIssue(issue);
       }
     }
+
+    return result;
   }
 
   /**

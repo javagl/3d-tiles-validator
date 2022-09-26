@@ -12,6 +12,27 @@ console.warn("Using fixed root directory for schema: " + tilesSchemaRootDir);
 Validators.setSchemaRootDir(tilesSchemaRootDir);
 //*/
 
+//*/
+import { Validators } from "./validation/Validators";
+import { JsonSchemaValidators } from "./json/JsonSchemaValidators";
+import { ExtensionValidator } from "./validation/ExtensionsValidator";
+import { ValidationContext } from "./validation/ValidationContext";
+const tilesSchemaRootDir = "C:/Develop/CesiumGS/3d-tiles/specification/schema";
+const s2Validator = JsonSchemaValidators.create3DTiles(
+  tilesSchemaRootDir,
+  "3DTILES_bounding_volume_S2"
+);
+class S2ExtensionValidator implements ExtensionValidator<any> {
+  validateObject(input: any, context: ValidationContext): boolean {
+    return s2Validator.validateObjectSync(input, context);
+  }
+}
+const performDefaultValidation = false;
+Validators.registerExtensionValidator("3DTILES_bounding_volume_S2", new S2ExtensionValidator(), performDefaultValidation);
+//*/
+
+
+
 const args = yargs(process.argv.slice(1))
   .help("help")
   .alias("help", "h")

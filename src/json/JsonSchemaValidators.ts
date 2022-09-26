@@ -79,6 +79,9 @@ export class JsonSchemaValidators {
     addSchema("TileFormats/i3dm.featureTable", "TileFormats/i3dm.featureTable.schema.json");
     addSchema("TileFormats/pnts.featureTable", "TileFormats/pnts.featureTable.schema.json");
 
+    // TODO Experimental for extension validation
+    addSchema("3DTILES_bounding_volume_S2", "../../extensions/3DTILES_bounding_volume_S2/schema/boundingVolume.3DTILES_bounding_volume_S2.schema.json");
+
     return v;
   }
 }
